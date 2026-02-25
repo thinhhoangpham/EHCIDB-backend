@@ -8,9 +8,10 @@ services:
       MYSQL_USER: ehci
       MYSQL_PASSWORD: ehci_pw
     ports:
-      - "3306:3306"
+      - "3307:3306"
     command: --local-infile=1 --secure-file-priv=""
     volumes:
       - mysqldata:/var/lib/mysql
+      - ./data:/data
 volumes:
   mysqldata:
