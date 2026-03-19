@@ -14,5 +14,25 @@ services:
       - mysqldata:/var/lib/mysql
       - ./data:/data
       - ./sql:/docker-entrypoint-initdb.d
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ehcidb_api
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ehcidb
+      DB_USER: ehci
+      DB_PASSWORD: ehci_pw
+      SECRET_KEY: dev-secret-key-change-in-production
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+
 volumes:
   mysqldata:

@@ -134,10 +134,10 @@ WHERE r.role_name = 'Viewer'
 
 INSERT INTO app_user (username, password_hash, full_name, email)
 VALUES
-    ('admin1', 'hashed_password_admin1', 'System Admin', 'admin1@example.com'),
-    ('doctor1', 'hashed_password_doctor1', 'Doctor User', 'doctor1@example.com'),
-    ('patient1', 'hashed_password_patient1', 'Patient User', 'patient1@example.com'),
-    ('viewer1', 'hashed_password_viewer1', 'Viewer User', 'viewer1@example.com');
+    ('admin1', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'System Admin', 'admin1@example.com'),
+    ('doctor1', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'Doctor User', 'doctor1@example.com'),
+    ('patient1', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'Patient User', 'patient1@example.com'),
+    ('viewer1', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'Viewer User', 'viewer1@example.com');
 
 -- =========================
 -- Assign Roles to Users
