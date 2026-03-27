@@ -1,6 +1,7 @@
 from decimal import Decimal
-from sqlalchemy import BigInteger, Boolean, Date, Integer, Numeric, String, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, Boolean, Date, Enum, Integer, Numeric, String, ForeignKey, UniqueConstraint, DateTime
+from sqlalchemy.orm import Mapped, mapped_column, relationship as sa_relationship
+from datetime import datetime
 from api.database import Base
 
 
@@ -11,8 +12,15 @@ class Patient(Base):
     patient_name: Mapped[str] = mapped_column(String(255), nullable=False)
     gender: Mapped[str] = mapped_column(String(50), nullable=False)
     blood_type_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    emergency_identifier: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
 
-    admissions: Mapped[list["Admission"]] = relationship("Admission", back_populates="patient")
+    admissions: Mapped[list["Admission"]] = sa_relationship("Admission", back_populates="patient")
+    allergies: Mapped[list["Allergy"]] = sa_relationship("Allergy", back_populates="patient")
+    conditions: Mapped[list["MedicalCondition"]] = sa_relationship("MedicalCondition", back_populates="patient")
+    medications: Mapped[list["PatientMedication"]] = sa_relationship("PatientMedication", back_populates="patient")
+    devices: Mapped[list["Device"]] = sa_relationship("Device", back_populates="patient")
+    emergency_contacts: Mapped[list["EmergencyContact"]] = sa_relationship("EmergencyContact", back_populates="patient")
+    insurances: Mapped[list["PatientInsurance"]] = sa_relationship("PatientInsurance", back_populates="patient")
 
 
 class Doctor(Base):
@@ -21,7 +29,7 @@ class Doctor(Base):
     doctor_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     doctor_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    admissions: Mapped[list["Admission"]] = relationship("Admission", back_populates="doctor")
+    admissions: Mapped[list["Admission"]] = sa_relationship("Admission", back_populates="doctor")
 
 
 class AppUser(Base):
@@ -36,9 +44,9 @@ class AppUser(Base):
     patient_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=True)
     doctor_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("doctor.doctor_id"), nullable=True)
 
-    user_roles: Mapped[list["UserRole"]] = relationship("UserRole", back_populates="user")
-    patient: Mapped["Patient | None"] = relationship("Patient")
-    doctor: Mapped["Doctor | None"] = relationship("Doctor")
+    user_roles: Mapped[list["UserRole"]] = sa_relationship("UserRole", back_populates="user")
+    patient: Mapped["Patient | None"] = sa_relationship("Patient")
+    doctor: Mapped["Doctor | None"] = sa_relationship("Doctor")
 
 
 class Role(Base):
@@ -47,7 +55,7 @@ class Role(Base):
     role_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     role_name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
-    user_roles: Mapped[list["UserRole"]] = relationship("UserRole", back_populates="role")
+    user_roles: Mapped[list["UserRole"]] = sa_relationship("UserRole", back_populates="role")
 
 
 class UserRole(Base):
@@ -58,8 +66,8 @@ class UserRole(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("app_user.user_id"), nullable=False)
     role_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("role.role_id"), nullable=False)
 
-    user: Mapped["AppUser"] = relationship("AppUser", back_populates="user_roles")
-    role: Mapped["Role"] = relationship("Role", back_populates="user_roles")
+    user: Mapped["AppUser"] = sa_relationship("AppUser", back_populates="user_roles")
+    role: Mapped["Role"] = sa_relationship("Role", back_populates="user_roles")
 
 
 class Hospital(Base):
@@ -68,7 +76,7 @@ class Hospital(Base):
     hospital_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     hospital_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    admissions: Mapped[list["Admission"]] = relationship("Admission", back_populates="hospital")
+    admissions: Mapped[list["Admission"]] = sa_relationship("Admission", back_populates="hospital")
 
 
 class Admission(Base):
@@ -92,6 +100,104 @@ class Admission(Base):
     discharge_date: Mapped[Date] = mapped_column(Date, nullable=False)
     billing_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
-    patient: Mapped["Patient"] = relationship("Patient", back_populates="admissions")
-    doctor: Mapped["Doctor"] = relationship("Doctor", back_populates="admissions")
-    hospital: Mapped["Hospital"] = relationship("Hospital", back_populates="admissions")
+    patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="admissions")
+    doctor: Mapped["Doctor"] = sa_relationship("Doctor", back_populates="admissions")
+    hospital: Mapped["Hospital"] = sa_relationship("Hospital", back_populates="admissions")
+
+
+# ---------------------------------------------------------------------------
+# Emergency tables
+# ---------------------------------------------------------------------------
+
+class Allergy(Base):
+    __tablename__ = "allergy"
+
+    allergy_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
+    allergy_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    severity: Mapped[str] = mapped_column(Enum("Mild", "Moderate", "Severe"), nullable=False, default="Moderate")
+
+    patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="allergies")
+
+
+class MedicalCondition(Base):
+    __tablename__ = "medical_condition"
+
+    condition_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
+    condition_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    critical_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="conditions")
+
+
+class PatientMedication(Base):
+    __tablename__ = "patient_medication"
+
+    medication_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
+    medication_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    dosage: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="medications")
+
+
+class Device(Base):
+    __tablename__ = "device"
+
+    device_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
+    device_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    device_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="devices")
+
+
+class EmergencyContact(Base):
+    __tablename__ = "emergency_contact"
+
+    contact_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
+    contact_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    relationship: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="emergency_contacts")
+
+
+class InsuranceProviderDetail(Base):
+    __tablename__ = "insurance_provider_detail"
+
+    provider_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    provider_name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    payer_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    patient_insurances: Mapped[list["PatientInsurance"]] = sa_relationship("PatientInsurance", back_populates="provider")
+
+
+class PatientInsurance(Base):
+    __tablename__ = "patient_insurance"
+
+    patient_insurance_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
+    provider_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("insurance_provider_detail.provider_id"), nullable=False)
+    plan_type: Mapped[str | None] = mapped_column(Enum("PPO", "HMO", "Medicaid", "Medicare"), nullable=True, default="PPO")
+    member_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    group_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    coverage_status: Mapped[str] = mapped_column(Enum("Active", "Inactive"), nullable=False, default="Active")
+
+    patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="insurances")
+    provider: Mapped["InsuranceProviderDetail"] = sa_relationship("InsuranceProviderDetail", back_populates="patient_insurances")
+
+
+class AccessLog(Base):
+    __tablename__ = "access_log"
+
+    log_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("app_user.user_id"), nullable=False)
+    action: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_patient_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    user: Mapped["AppUser"] = sa_relationship("AppUser")
+    target_patient: Mapped["Patient | None"] = sa_relationship("Patient")
