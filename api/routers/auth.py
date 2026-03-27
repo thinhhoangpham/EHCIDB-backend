@@ -56,6 +56,8 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         email=user.email or "",
         role=frontend_role,  # type: ignore[arg-type]
         is_active=user.is_active,
+        patient_id=user.patient_id,
+        doctor_id=user.doctor_id,
     )
 
     return AuthResponse(

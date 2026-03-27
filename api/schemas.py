@@ -15,6 +15,8 @@ class UserSchema(BaseModel):
     email: str
     role: UserRoleType
     is_active: bool
+    patient_id: int | None = None
+    doctor_id: int | None = None
 
     model_config = {"from_attributes": True}
 

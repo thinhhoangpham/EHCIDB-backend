@@ -26,7 +26,13 @@ CREATE TABLE app_user (
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    patient_id BIGINT NULL,
+    doctor_id BIGINT NULL,
+    CONSTRAINT fk_app_user_patient
+        FOREIGN KEY (patient_id) REFERENCES patient(patient_id),
+    CONSTRAINT fk_app_user_doctor
+        FOREIGN KEY (doctor_id) REFERENCES doctor(doctor_id)
 );
 
 CREATE TABLE role (
@@ -129,44 +135,74 @@ WHERE r.role_name = 'Viewer'
   AND p.permission_name = 'READ';
 
 -- =========================
--- Example Users
+-- Admin User
 -- =========================
 
 INSERT INTO app_user (username, password_hash, full_name, email)
 VALUES
-    ('admin1', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'System Admin', 'admin1@example.com'),
-    ('doctor1', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'Doctor User', 'doctor1@example.com'),
-    ('patient1', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'Patient User', 'patient1@example.com'),
-    ('viewer1', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'Viewer User', 'viewer1@example.com');
+    ('admin', '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK', 'System Admin', 'admin@ehcidb.local');
 
 -- =========================
--- Assign Roles to Users
+-- Assign Admin Role
 -- =========================
 
 INSERT INTO user_role (user_id, role_id)
 SELECT u.user_id, r.role_id
 FROM app_user u
 JOIN role r
-WHERE u.username = 'admin1'
+WHERE u.username = 'admin'
   AND r.role_name = 'Admin';
 
-INSERT INTO user_role (user_id, role_id)
-SELECT u.user_id, r.role_id
-FROM app_user u
-JOIN role r
-WHERE u.username = 'doctor1'
-  AND r.role_name = 'Doctor';
+-- =========================
+-- Bulk-insert Patient Users
+-- =========================
+
+INSERT INTO app_user (username, password_hash, full_name, email, patient_id)
+SELECT
+    CONCAT('p_', p.patient_id),
+    '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK',
+    p.patient_name,
+    CONCAT('p_', p.patient_id, '@ehcidb.local'),
+    p.patient_id
+FROM patient p;
+
+-- =========================
+-- Bulk-insert Doctor Users
+-- =========================
+
+INSERT INTO app_user (username, password_hash, full_name, email, doctor_id)
+SELECT
+    CONCAT('d_', d.doctor_id),
+    '$2b$12$/aodZvOnQAKAKpyyExoxOeibucbN7bS9yw81KTbldgf7d0tqJ2QFK',
+    d.doctor_name,
+    CONCAT('d_', d.doctor_id, '@ehcidb.local'),
+    d.doctor_id
+FROM doctor d;
+
+-- =========================
+-- Assign Patient Role to All Patient Users
+-- =========================
 
 INSERT INTO user_role (user_id, role_id)
 SELECT u.user_id, r.role_id
 FROM app_user u
-JOIN role r
-WHERE u.username = 'patient1'
-  AND r.role_name = 'Patient';
+JOIN role r ON r.role_name = 'Patient'
+WHERE u.patient_id IS NOT NULL;
+
+-- =========================
+-- Assign Doctor Role to All Doctor Users
+-- =========================
 
 INSERT INTO user_role (user_id, role_id)
 SELECT u.user_id, r.role_id
 FROM app_user u
-JOIN role r
-WHERE u.username = 'viewer1'
-  AND r.role_name = 'Viewer';
+JOIN role r ON r.role_name = 'Doctor'
+WHERE u.doctor_id IS NOT NULL;
+
+-- =========================
+-- Populate doctor_patient_access from admission
+-- =========================
+
+INSERT INTO doctor_patient_access (doctor_id, patient_id)
+SELECT DISTINCT doctor_id, patient_id
+FROM admission;

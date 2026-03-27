@@ -1,10 +1,11 @@
+from typing import Callable
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from jose import JWTError
 from api.database import SessionLocal
 from api.auth import decode_token
-from api.models import AppUser
+from api.models import AppUser, UserRole
 
 bearer_scheme = HTTPBearer()
 
@@ -31,10 +32,28 @@ def get_current_user(
             detail="Invalid token",
         )
 
-    user = db.get(AppUser, user_id)
+    user = (
+        db.query(AppUser)
+        .options(joinedload(AppUser.user_roles).joinedload(UserRole.role))
+        .filter(AppUser.user_id == user_id)
+        .first()
+    )
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
         )
     return user
+
+
+def require_role(role_name: str) -> Callable:
+    """Return a FastAPI dependency that enforces the user has the given role."""
+    def dependency(user: AppUser = Depends(get_current_user)) -> AppUser:
+        for ur in user.user_roles:
+            if ur.role.role_name == role_name:
+                return user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Requires {role_name} role",
+        )
+    return dependency
