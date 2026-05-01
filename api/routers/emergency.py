@@ -3,6 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from api.services.doctor_service import create_doctor
+from fastapi import Depends
+from api.dependencies import require_role
 
 from api.dependencies import get_db, require_role
 from api.models import (
