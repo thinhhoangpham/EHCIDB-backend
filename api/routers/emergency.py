@@ -2,6 +2,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from api.dependencies import get_db, require_role
 from api.models import (
@@ -504,6 +505,7 @@ def doctor_get_patient(
 def admin_list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=200),
+    q: str | None = Query(None, description="Search users by name, username, or email"),
     user: AppUser = Depends(require_role("Admin")),
     db: Session = Depends(get_db),
 ) -> UserListOut:
@@ -511,11 +513,24 @@ def admin_list_users(
 
     offset = (page - 1) * limit
 
-    total = db.query(AppUser).count()
+    query = db.query(AppUser)
+
+    if q and q.strip():
+        search = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                AppUser.full_name.ilike(search),
+                AppUser.username.ilike(search),
+                AppUser.email.ilike(search),
+            )
+        )
+
+    total = query.count()
 
     users = (
-        db.query(AppUser)
+        query
         .options(joinedload(AppUser.user_roles).joinedload(UserRole.role))
+        .order_by(AppUser.full_name.asc(), AppUser.user_id.asc())
         .offset(offset)
         .limit(limit)
         .all()
