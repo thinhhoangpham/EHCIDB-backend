@@ -25,3 +25,9 @@ class AuthResponse(BaseModel):
     access_token: str
     refresh_token: str
     user: UserSchema
+
+
+class PatientRegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
