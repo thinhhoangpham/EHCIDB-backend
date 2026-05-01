@@ -109,6 +109,10 @@ class EmergencyProfileOut(BaseModel):
     patient_name: str
     gender: str
     blood_type: str
+    date_of_birth: str | None
+    phone_number: str | None
+    email: str | None
+    address: str | None
     allergies: list[AllergyOut]
     conditions: list[ConditionOut]
     medications: list[MedicationOut]
@@ -190,6 +194,10 @@ def _get_emergency_profile(patient: Patient) -> EmergencyProfileOut:
         patient_name=patient.patient_name,
         gender=patient.gender,
         blood_type=patient.blood_type_code,
+        date_of_birth=patient.date_of_birth.isoformat() if patient.date_of_birth else None,
+        phone_number=patient.phone_number,
+        email=patient.email,
+        address=patient.address,
         allergies=[AllergyOut.model_validate(a) for a in patient.allergies],
         conditions=[ConditionOut.model_validate(c) for c in patient.conditions],
         medications=[MedicationOut.model_validate(m) for m in patient.medications],

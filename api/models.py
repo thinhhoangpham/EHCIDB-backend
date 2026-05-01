@@ -1,7 +1,7 @@
 from decimal import Decimal
 from sqlalchemy import BigInteger, Boolean, Date, Enum, Integer, Numeric, String, ForeignKey, UniqueConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship as sa_relationship
-from datetime import datetime
+from datetime import date, datetime
 from api.database import Base
 
 
@@ -12,6 +12,10 @@ class Patient(Base):
     patient_name: Mapped[str] = mapped_column(String(255), nullable=False)
     gender: Mapped[str] = mapped_column(String(50), nullable=False)
     blood_type_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     emergency_identifier: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
 
     admissions: Mapped[list["Admission"]] = sa_relationship("Admission", back_populates="patient")
