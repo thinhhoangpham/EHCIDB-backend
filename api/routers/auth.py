@@ -89,11 +89,13 @@ def register_patient(body: PatientRegisterRequest, db: Session = Depends(get_db)
 
     from api.models import Patient
     import uuid
+    from datetime import date
 
     patient = Patient(
         patient_name=body.name,
         gender="Male",
         blood_type_code="A+",
+        date_of_birth=date.today(),
         emergency_identifier=str(uuid.uuid4())[:8].upper()
     )
     db.add(patient)
