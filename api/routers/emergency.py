@@ -2,6 +2,9 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from api.services.doctor_service import create_doctor
+from fastapi import Depends
+from api.dependencies import require_role
 
 from api.dependencies import get_db, require_role
 from api.models import (
@@ -677,3 +680,19 @@ def delete_insurance_provider(
 
     db.delete(provider)
     db.commit()
+
+
+
+#added create doctor route for admin to create doctor account
+# backend/api/routers/emergency.py
+
+@router.post("/admin/create-doctor")
+def admin_create_doctor(payload: dict, user=Depends(require_role("Admin"))):
+
+    return create_doctor(
+        username=payload["username"],
+        email=payload["email"],
+        password=payload["password"],
+        full_name=payload["full_name"],
+        doctor_name=payload["doctor_name"]
+    )
