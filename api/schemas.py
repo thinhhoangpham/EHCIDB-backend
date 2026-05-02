@@ -27,7 +27,7 @@ class AuthResponse(BaseModel):
     user: UserSchema
 
 
-class PatientRegisterRequest(BaseModel):
-    name: str
+class UserCreate(BaseModel):
+    full_name: str
     email: str
     password: str

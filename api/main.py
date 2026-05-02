@@ -17,3 +17,4 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(emergency.router, prefix="/api")
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
