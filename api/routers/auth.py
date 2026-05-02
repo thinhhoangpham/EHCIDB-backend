@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
+from datetime import date
 from api.dependencies import get_db
-from api.models import AppUser, Role, UserRole
+from api.models import AppUser, Role, UserRole, Patient, DimBloodType
 from api.schemas import LoginRequest, AuthResponse, UserCreate, UserSchema
 from api.auth import verify_password, hash_password, create_access_token, create_refresh_token
 
@@ -15,6 +16,8 @@ _ROLE_MAP: dict[str, str] = {
     "Doctor": "doctor",
     "Patient": "patient",
 }
+
+
 
 
 @router.post("/auth/register/", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -38,12 +41,23 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
             detail="Patient role not found. Run the security seed SQL first.",
         )
 
+    new_patient = Patient(
+        patient_name=body.full_name,
+        email=body.email,
+        gender=body.gender,
+        blood_type_code=body.blood_type_code,
+        date_of_birth=body.date_of_birth,
+    )
+    db.add(new_patient)
+    db.flush()
+
     new_user = AppUser(
         username=body.email,
         email=body.email,
         full_name=body.full_name,
         password_hash=hash_password(body.password),
         is_active=True,
+        patient_id=new_patient.patient_id,
     )
     db.add(new_user)
     db.flush()

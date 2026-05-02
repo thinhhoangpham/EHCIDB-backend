@@ -1,5 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel
+from datetime import date
 
 UserRoleType = Literal["patient", "doctor", "admin"]
 
@@ -27,7 +28,13 @@ class AuthResponse(BaseModel):
     user: UserSchema
 
 
+
+
+
 class UserCreate(BaseModel):
     full_name: str
     email: str
     password: str
+    gender: str
+    blood_type_code: str
+    date_of_birth: date

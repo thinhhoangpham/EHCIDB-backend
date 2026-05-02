@@ -3,6 +3,8 @@ from sqlalchemy import BigInteger, Boolean, Date, Enum, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship as sa_relationship
 from datetime import date, datetime
 from api.database import Base
+from sqlalchemy import Column, String
+
 
 
 class Patient(Base):
@@ -205,3 +207,9 @@ class AccessLog(Base):
 
     user: Mapped["AppUser"] = sa_relationship("AppUser")
     target_patient: Mapped["Patient | None"] = sa_relationship("Patient")
+
+
+class DimBloodType(Base):
+    __tablename__ = "dim_blood_type"
+    blood_type_code = Column(String(10), primary_key=True)
+
