@@ -213,3 +213,13 @@ class DimBloodType(Base):
     __tablename__ = "dim_blood_type"
     blood_type_code = Column(String(10), primary_key=True)
 
+
+class DoctorPatientAssignment(Base):
+    __tablename__ = "doctor_patient_assignment"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    doctor_id = Column(BigInteger, ForeignKey("doctor.doctor_id"), nullable=False)
+    patient_id = Column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
+
+    date_of_admission = Column(DateTime, default=datetime.utcnow)

@@ -4,6 +4,7 @@ from api.routers import auth
 from api.routers import dashboard
 from api.routers import emergency
 from api.routers import meta
+from api.routers import admission
 
 app = FastAPI(title="EHCIDB API")
 
@@ -24,3 +25,4 @@ app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(dashboard.router, prefix="/api", tags=["dashboard"])
 app.include_router(emergency.router, prefix="/api", tags=["emergency"])
 app.include_router(meta.router, prefix="/api/meta", tags=["meta"])
+app.include_router(admission.router, prefix="/api")

@@ -1,9 +1,0 @@
-fastapi
-uvicorn[standard]
-pydantic[email]
-python-multipart
-sqlalchemy
-mysql-connector-python
-passlib[bcrypt]
-python-jose[cryptography]
-python-dotenv

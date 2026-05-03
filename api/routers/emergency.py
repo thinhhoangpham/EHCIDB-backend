@@ -111,6 +111,7 @@ class PatientEmergencyInfoIn(BaseModel):
 
 class EmergencyProfileOut(BaseModel):
     emergency_identifier: str | None
+    patient_id: int | None
     patient_name: str
     gender: str
     blood_type: str
@@ -196,6 +197,7 @@ def _get_emergency_profile(patient: Patient) -> EmergencyProfileOut:
 
     return EmergencyProfileOut(
         emergency_identifier=patient.emergency_identifier,
+        patient_id=patient.patient_id,
         patient_name=patient.patient_name,
         gender=patient.gender,
         blood_type=patient.blood_type_code,

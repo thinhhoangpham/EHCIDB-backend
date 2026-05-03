@@ -95,3 +95,7 @@ Connect via MySQL client:
 ```bash
 mysql -h 127.0.0.1 -P 3307 -u ehci -pehci_pw ehcidb
 ```
+Access Database MYSQL:
+```bash
+docker exec -it ehcidb_mysql mysql -u ehci -pehci_pw ehcidb
+```

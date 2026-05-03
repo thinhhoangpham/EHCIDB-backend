@@ -102,3 +102,17 @@ CREATE TABLE admission (
   CONSTRAINT fk_adm_med     FOREIGN KEY (medication) REFERENCES dim_medication(medication),
   CONSTRAINT fk_adm_test    FOREIGN KEY (test_result) REFERENCES dim_test_result(test_result)
 );
+
+
+DROP TABLE IF EXISTS doctor_patient_assignment;
+CREATE TABLE doctor_patient_assignment (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+  doctor_id BIGINT NOT NULL,
+  patient_id BIGINT NOT NULL,
+
+  date_of_admission DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (doctor_id) REFERENCES doctor(doctor_id),
+  FOREIGN KEY (patient_id) REFERENCES patient(patient_id)
+);
