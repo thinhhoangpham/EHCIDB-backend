@@ -146,6 +146,13 @@ PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
 -- =========================================================================
 -- FIX 5 — CHECK constraints on `admission` (MySQL 8 enforces these).
 -- =========================================================================
+-- Clean existing bad data BEFORE adding the non-negative billing constraint.
+-- The source CSV contains some negative billing amounts, so the constraint
+-- would fail unless those rows are corrected first.
+UPDATE admission
+SET billing_amount = ABS(billing_amount)
+WHERE billing_amount < 0;
+
 SET @c := (SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS
            WHERE CONSTRAINT_SCHEMA='ehcidb' AND CONSTRAINT_NAME='ck_adm_billing_nonneg');
 SET @sql := IF(@c=0,
