@@ -1,6 +1,6 @@
 # EHCIDB Backend
 
-Backend for the Emergency Healthcare Critical Information Database System. Built with FastAPI and MySQL 8.4, provisioned via Docker.
+Backend for the Emergency Healthcare Critical Information Database System. Built with FastAPI and MySQL 8.4, provisioned via Docker. 
 
 ## Prerequisites
 
