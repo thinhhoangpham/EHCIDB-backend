@@ -104,6 +104,11 @@ class InsuranceOut(BaseModel):
     coverage_status: str
 
 
+class PatientEmergencyInfoIn(BaseModel):
+    phone_number: str | None = None
+    address: str | None = None
+
+
 class EmergencyProfileOut(BaseModel):
     emergency_identifier: str | None
     patient_name: str
@@ -252,6 +257,31 @@ def get_patient_profile(
     if patient is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient record not found")
 
+    return _get_emergency_profile(patient)
+
+
+@router.put("/emergency/patient/profile/info", response_model=EmergencyProfileOut)
+def update_patient_emergency_info(
+    body: PatientEmergencyInfoIn,
+    user: AppUser = Depends(require_role("Patient")),
+    db: Session = Depends(get_db),
+) -> EmergencyProfileOut:
+    if user.patient_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not linked to a patient record")
+
+    patient = _load_patient_full(user.patient_id, db)
+    if patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient record not found")
+
+    patient.phone_number = body.phone_number if body.phone_number else None
+    patient.address = body.address if body.address else None
+
+    # Auto-generate emergency_identifier if it's missing
+    if not patient.emergency_identifier:
+        patient.emergency_identifier = f"EHC{patient.patient_id:05d}"
+
+    db.commit()
+    db.refresh(patient)
     return _get_emergency_profile(patient)
 
 

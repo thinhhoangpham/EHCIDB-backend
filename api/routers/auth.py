@@ -50,6 +50,10 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
     )
     db.add(new_patient)
     db.flush()
+    
+    # Auto-generate emergency_identifier
+    new_patient.emergency_identifier = f"EHC{new_patient.patient_id:05d}"
+
 
     new_user = AppUser(
         username=body.email,
