@@ -16,8 +16,7 @@ def assign_patient(
 
     assignment = DoctorPatientAssignment(
         doctor_id=current_user.doctor_id,
-        patient_id=patient_id
-        # date_of_admission auto-handled by DB
+        patient_id=patient_id,
     )
 
     db.add(assignment)
@@ -26,7 +25,7 @@ def assign_patient(
 
     return {
         "message": "Patient assigned successfully",
-        "assigned_at": assignment.date_of_admission
+        "assigned_at": assignment.assigned_at,
     }
 
 # @router.get("/admission/assigned")

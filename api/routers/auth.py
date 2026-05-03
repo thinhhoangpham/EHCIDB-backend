@@ -50,9 +50,10 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
     )
     db.add(new_patient)
     db.flush()
-    
-    # Auto-generate emergency_identifier
-    new_patient.emergency_identifier = f"EHC{new_patient.patient_id:05d}"
+
+    # Auto-generate a non-enumerable emergency_identifier
+    from api.routers.emergency import _new_emergency_identifier
+    new_patient.emergency_identifier = _new_emergency_identifier()
 
 
     new_user = AppUser(

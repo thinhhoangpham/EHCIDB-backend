@@ -1,13 +1,28 @@
 from decimal import Decimal
-from sqlalchemy import BigInteger, Boolean, Date, Enum, Integer, Numeric, String, ForeignKey, UniqueConstraint, DateTime
+from sqlalchemy import BigInteger, Boolean, Date, Enum, Integer, Numeric, String, ForeignKey, UniqueConstraint, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship as sa_relationship
 from datetime import date, datetime
 from api.database import Base
-from sqlalchemy import Column, String
+
+
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
+
+
+class SoftDeleteMixin:
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
 
 
 
-class Patient(Base):
+class Patient(TimestampMixin, Base):
     __tablename__ = "patient"
 
     patient_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -18,7 +33,7 @@ class Patient(Base):
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    emergency_identifier: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
+    emergency_identifier: Mapped[str | None] = mapped_column(String(40), unique=True, nullable=True)
 
     admissions: Mapped[list["Admission"]] = sa_relationship("Admission", back_populates="patient")
     allergies: Mapped[list["Allergy"]] = sa_relationship("Allergy", back_populates="patient")
@@ -115,7 +130,7 @@ class Admission(Base):
 # Emergency tables
 # ---------------------------------------------------------------------------
 
-class Allergy(Base):
+class Allergy(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "allergy"
 
     allergy_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -126,7 +141,7 @@ class Allergy(Base):
     patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="allergies")
 
 
-class MedicalCondition(Base):
+class MedicalCondition(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "medical_condition"
 
     condition_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -137,7 +152,7 @@ class MedicalCondition(Base):
     patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="conditions")
 
 
-class PatientMedication(Base):
+class PatientMedication(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "patient_medication"
 
     medication_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -148,7 +163,7 @@ class PatientMedication(Base):
     patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="medications")
 
 
-class Device(Base):
+class Device(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "device"
 
     device_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -159,14 +174,14 @@ class Device(Base):
     patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="devices")
 
 
-class EmergencyContact(Base):
+class EmergencyContact(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "emergency_contact"
 
     contact_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
     contact_name: Mapped[str] = mapped_column(String(255), nullable=False)
     relationship: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
 
     patient: Mapped["Patient"] = sa_relationship("Patient", back_populates="emergency_contacts")
 
@@ -181,8 +196,11 @@ class InsuranceProviderDetail(Base):
     patient_insurances: Mapped[list["PatientInsurance"]] = sa_relationship("PatientInsurance", back_populates="provider")
 
 
-class PatientInsurance(Base):
+class PatientInsurance(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "patient_insurance"
+    __table_args__ = (
+        UniqueConstraint("provider_id", "member_id", name="uq_patient_insurance_member"),
+    )
 
     patient_insurance_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
@@ -211,15 +229,16 @@ class AccessLog(Base):
 
 class DimBloodType(Base):
     __tablename__ = "dim_blood_type"
-    blood_type_code = Column(String(10), primary_key=True)
+
+    blood_type_code: Mapped[str] = mapped_column(String(10), primary_key=True)
 
 
 class DoctorPatientAssignment(Base):
     __tablename__ = "doctor_patient_assignment"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-
-    doctor_id = Column(BigInteger, ForeignKey("doctor.doctor_id"), nullable=False)
-    patient_id = Column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
-
-    date_of_admission = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    doctor_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("doctor.doctor_id"), nullable=False)
+    patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp()
+    )

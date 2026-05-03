@@ -1,13 +1,15 @@
+import uuid
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from api.services.doctor_service import create_doctor
-from fastapi import Depends
-from api.dependencies import require_role
-
 from api.dependencies import get_db, require_role
+
+
+def _new_emergency_identifier() -> str:
+    return "EHC-" + uuid.uuid4().hex[:16].upper()
 from api.models import (
     AccessLog,
     Allergy,
@@ -85,7 +87,7 @@ class DeviceOut(BaseModel):
 class ContactIn(BaseModel):
     contact_name: str
     relationship: str | None = None
-    phone_number: str | None = None
+    phone_number: str
 
 
 class ContactOut(BaseModel):
@@ -102,6 +104,14 @@ class InsuranceOut(BaseModel):
     plan_type: str | None
     member_id: str | None
     coverage_status: str
+
+
+class PatientInsuranceIn(BaseModel):
+    provider_name: str
+    plan_type: Literal["PPO", "HMO", "Medicaid", "Medicare"]
+    member_id: str
+    group_number: str | None = None
+    coverage_status: Literal["Active", "Inactive"] = "Active"
 
 
 class PatientEmergencyInfoIn(BaseModel):
@@ -215,9 +225,11 @@ def _get_emergency_profile(patient: Patient) -> EmergencyProfileOut:
 
 
 def _load_patient_full(patient_id: int, db: Session) -> Patient:
-    """Load a patient with all emergency relationships eager-loaded."""
-    from sqlalchemy.orm import joinedload
+    """Load a patient with all emergency relationships eager-loaded.
 
+    Soft-deleted clinical rows are filtered post-load so the caller never
+    sees them.
+    """
     patient = (
         db.query(Patient)
         .options(
@@ -231,6 +243,13 @@ def _load_patient_full(patient_id: int, db: Session) -> Patient:
         .filter(Patient.patient_id == patient_id)
         .first()
     )
+    if patient is not None:
+        patient.allergies = [a for a in patient.allergies if a.is_active]
+        patient.conditions = [c for c in patient.conditions if c.is_active]
+        patient.medications = [m for m in patient.medications if m.is_active]
+        patient.devices = [d for d in patient.devices if d.is_active]
+        patient.emergency_contacts = [ec for ec in patient.emergency_contacts if ec.is_active]
+        patient.insurances = [i for i in patient.insurances if i.is_active]
     return patient
 
 
@@ -278,9 +297,9 @@ def update_patient_emergency_info(
     patient.phone_number = body.phone_number if body.phone_number else None
     patient.address = body.address if body.address else None
 
-    # Auto-generate emergency_identifier if it's missing
+    # Auto-generate a non-enumerable emergency_identifier if it's missing
     if not patient.emergency_identifier:
-        patient.emergency_identifier = f"EHC{patient.patient_id:05d}"
+        patient.emergency_identifier = _new_emergency_identifier()
 
     db.commit()
     db.refresh(patient)
@@ -312,11 +331,11 @@ def delete_allergy(
     if user.patient_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not linked to a patient record")
 
-    allergy = db.query(Allergy).filter(Allergy.allergy_id == allergy_id).first()
+    allergy = db.query(Allergy).filter(Allergy.allergy_id == allergy_id, Allergy.is_active == True).first()
     if allergy is None or allergy.patient_id != user.patient_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Allergy not found")
 
-    db.delete(allergy)
+    allergy.is_active = False
     db.commit()
 
 
@@ -349,11 +368,15 @@ def delete_condition(
     if user.patient_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not linked to a patient record")
 
-    condition = db.query(MedicalCondition).filter(MedicalCondition.condition_id == condition_id).first()
+    condition = (
+        db.query(MedicalCondition)
+        .filter(MedicalCondition.condition_id == condition_id, MedicalCondition.is_active == True)
+        .first()
+    )
     if condition is None or condition.patient_id != user.patient_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Condition not found")
 
-    db.delete(condition)
+    condition.is_active = False
     db.commit()
 
 
@@ -386,11 +409,15 @@ def delete_medication(
     if user.patient_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not linked to a patient record")
 
-    medication = db.query(PatientMedication).filter(PatientMedication.medication_id == medication_id).first()
+    medication = (
+        db.query(PatientMedication)
+        .filter(PatientMedication.medication_id == medication_id, PatientMedication.is_active == True)
+        .first()
+    )
     if medication is None or medication.patient_id != user.patient_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication not found")
 
-    db.delete(medication)
+    medication.is_active = False
     db.commit()
 
 
@@ -419,11 +446,11 @@ def delete_device(
     if user.patient_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not linked to a patient record")
 
-    device = db.query(Device).filter(Device.device_id == device_id).first()
+    device = db.query(Device).filter(Device.device_id == device_id, Device.is_active == True).first()
     if device is None or device.patient_id != user.patient_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found")
 
-    db.delete(device)
+    device.is_active = False
     db.commit()
 
 
@@ -458,7 +485,11 @@ def update_emergency_contact(
     if user.patient_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not linked to a patient record")
 
-    contact = db.query(EmergencyContact).filter(EmergencyContact.contact_id == contact_id).first()
+    contact = (
+        db.query(EmergencyContact)
+        .filter(EmergencyContact.contact_id == contact_id, EmergencyContact.is_active == True)
+        .first()
+    )
     if contact is None or contact.patient_id != user.patient_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
 
@@ -479,12 +510,64 @@ def delete_emergency_contact(
     if user.patient_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not linked to a patient record")
 
-    contact = db.query(EmergencyContact).filter(EmergencyContact.contact_id == contact_id).first()
+    contact = (
+        db.query(EmergencyContact)
+        .filter(EmergencyContact.contact_id == contact_id, EmergencyContact.is_active == True)
+        .first()
+    )
     if contact is None or contact.patient_id != user.patient_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
 
-    db.delete(contact)
+    contact.is_active = False
     db.commit()
+
+
+@router.put("/emergency/patient/insurance", response_model=InsuranceOut)
+def upsert_patient_insurance(
+    body: PatientInsuranceIn,
+    user: AppUser = Depends(require_role("Patient")),
+    db: Session = Depends(get_db),
+) -> InsuranceOut:
+    if user.patient_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not linked to a patient record")
+
+    provider = (
+        db.query(InsuranceProviderDetail)
+        .filter(InsuranceProviderDetail.provider_name == body.provider_name)
+        .first()
+    )
+    if provider is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Insurance provider '{body.provider_name}' is not on file",
+        )
+
+    existing = (
+        db.query(PatientInsurance)
+        .filter(PatientInsurance.patient_id == user.patient_id, PatientInsurance.is_active == True)
+        .first()
+    )
+
+    if existing is None:
+        existing = PatientInsurance(patient_id=user.patient_id)
+        db.add(existing)
+
+    existing.provider_id = provider.provider_id
+    existing.plan_type = body.plan_type
+    existing.member_id = body.member_id
+    existing.group_number = body.group_number
+    existing.coverage_status = body.coverage_status
+    existing.is_active = True
+
+    db.commit()
+    db.refresh(existing)
+
+    return InsuranceOut(
+        provider_name=provider.provider_name,
+        plan_type=existing.plan_type,
+        member_id=existing.member_id,
+        coverage_status=existing.coverage_status,
+    )
 
 
 # ---------------------------------------------------------------------------
