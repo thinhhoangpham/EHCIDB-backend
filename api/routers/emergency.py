@@ -818,6 +818,15 @@ def list_insurance_providers(
     return [InsuranceProviderOut.model_validate(p) for p in providers]
 
 
+@router.get("/emergency/patient/insurance-providers", response_model=list[InsuranceProviderOut])
+def list_patient_insurance_providers(
+    current_user: AppUser = Depends(require_role("Patient")),
+    db: Session = Depends(get_db),
+) -> list[InsuranceProviderOut]:
+    providers = db.query(InsuranceProviderDetail).order_by(InsuranceProviderDetail.provider_name).all()
+    return [InsuranceProviderOut.model_validate(p) for p in providers]
+
+
 @router.post("/emergency/admin/insurance-providers", response_model=InsuranceProviderOut, status_code=status.HTTP_201_CREATED)
 def add_insurance_provider(
     body: InsuranceProviderIn,

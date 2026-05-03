@@ -206,8 +206,11 @@ def doctor_dashboard(
     stats_row = db.execute(text("""
         SELECT
             (SELECT COUNT(DISTINCT patient_id)
-             FROM doctor_patient_access
-             WHERE doctor_id = :doctor_id)                                  AS my_patients,
+             FROM (
+                 SELECT patient_id FROM doctor_patient_access WHERE doctor_id = :doctor_id
+                 UNION
+                 SELECT patient_id FROM doctor_patient_assignment WHERE doctor_id = :doctor_id
+             ) AS combined_patients)                                         AS my_patients,
             COUNT(*)                                                         AS total_admissions,
             AVG(billing_amount)                                              AS avg_billing,
             AVG(DATEDIFF(discharge_date, date_of_admission))                 AS avg_length_of_stay
@@ -225,9 +228,12 @@ def doctor_dashboard(
     # --- patients accessible to this doctor ---
     patient_rows = db.execute(text("""
         SELECT p.patient_id, p.patient_name, p.gender, p.blood_type_code AS blood_type
-        FROM doctor_patient_access dpa
+        FROM (
+            SELECT patient_id FROM doctor_patient_access WHERE doctor_id = :doctor_id
+            UNION
+            SELECT patient_id FROM doctor_patient_assignment WHERE doctor_id = :doctor_id
+        ) dpa
         JOIN patient p ON p.patient_id = dpa.patient_id
-        WHERE dpa.doctor_id = :doctor_id
         ORDER BY p.patient_name
     """), {"doctor_id": doctor_id}).fetchall()
     patients = [
@@ -273,6 +279,23 @@ def doctor_dashboard(
     # --- last 20 admissions for this doctor ---
     recent_rows = db.execute(text("""
         SELECT
+            dpa.id AS admission_id,
+            p.patient_name,
+            'Not Specified' AS hospital_name,
+            'Pending' AS medical_condition,
+            'Emergency' AS admission_type,
+            'Pending' AS medication,
+            'Pending' AS test_result,
+            DATE(dpa.date_of_admission) AS date_of_admission,
+            NULL AS discharge_date,
+            0.0 AS billing_amount
+        FROM doctor_patient_assignment dpa
+        JOIN patient p ON p.patient_id = dpa.patient_id
+        WHERE dpa.doctor_id = :doctor_id
+
+        UNION ALL
+
+        SELECT
             a.admission_id,
             p.patient_name,
             h.hospital_name,
@@ -284,10 +307,11 @@ def doctor_dashboard(
             a.discharge_date,
             a.billing_amount
         FROM admission a
-        JOIN patient  p ON p.patient_id  = a.patient_id
+        JOIN patient p ON p.patient_id = a.patient_id
         JOIN hospital h ON h.hospital_id = a.hospital_id
         WHERE a.doctor_id = :doctor_id
-        ORDER BY a.date_of_admission DESC, a.admission_id DESC
+        
+        ORDER BY date_of_admission DESC, admission_id DESC
         LIMIT 20
     """), {"doctor_id": doctor_id}).fetchall()
     recent_admissions = [
