@@ -239,6 +239,6 @@ class DoctorPatientAssignment(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     doctor_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("doctor.doctor_id"), nullable=False)
     patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient.patient_id"), nullable=False)
-    assigned_at: Mapped[datetime] = mapped_column(
+    date_of_admission: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp()
     )

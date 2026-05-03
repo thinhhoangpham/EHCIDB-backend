@@ -25,7 +25,7 @@ def assign_patient(
 
     return {
         "message": "Patient assigned successfully",
-        "assigned_at": assignment.assigned_at,
+        "date_of_admission": assignment.date_of_admission,
     }
 
 # @router.get("/admission/assigned")

@@ -188,14 +188,14 @@ PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
 -- `assigned_at`. The column records the assignment timestamp, not an
 -- admission date.
 -- =========================================================================
-SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS
-           WHERE TABLE_SCHEMA='ehcidb' AND TABLE_NAME='doctor_patient_assignment'
-             AND COLUMN_NAME='date_of_admission');
-SET @sql := IF(@c>0,
-  'ALTER TABLE doctor_patient_assignment
-     CHANGE COLUMN date_of_admission assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
-  'SELECT 1');
-PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+-- SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS
+--            WHERE TABLE_SCHEMA='ehcidb' AND TABLE_NAME='doctor_patient_assignment'
+--              AND COLUMN_NAME='date_of_admission');
+-- SET @sql := IF(@c>0,
+--   'ALTER TABLE doctor_patient_assignment
+--      CHANGE COLUMN date_of_admission assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+--   'SELECT 1');
+-- PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
 
 
 -- =========================================================================

@@ -574,27 +574,63 @@ def upsert_patient_insurance(
 # Doctor endpoints
 # ---------------------------------------------------------------------------
 
+# @router.get("/emergency/doctor/search", response_model=list[PatientSearchResult])
+# def doctor_search(
+#     q: str = Query(..., min_length=1),
+#     user: AppUser = Depends(require_role("Doctor")),
+#     db: Session = Depends(get_db),
+# ) -> list[PatientSearchResult]:
+#     patients = (
+#         db.query(Patient)
+#         .filter(
+#             (Patient.emergency_identifier == q) | (Patient.patient_name.ilike(f"%{q}%"))
+#         )
+#         .limit(20)
+#         .all()
+#     )
+
+#     _log_access(db, user.user_id, f"Searched patients: {q}")
+
+#     return [
+#         PatientSearchResult(
+#             patient_id=p.patient_id,
+#             emergency_identifier=p.emergency_identifier,
+#             patient_name=p.patient_name,
+#             blood_type=p.blood_type_code,
+#         )
+#         for p in patients
+#     ]
+
+
 @router.get("/emergency/doctor/search", response_model=list[PatientSearchResult])
 def doctor_search(
     q: str = Query(..., min_length=1),
     user: AppUser = Depends(require_role("Doctor")),
     db: Session = Depends(get_db),
 ) -> list[PatientSearchResult]:
+
+    q_clean = q.strip()
+
     patients = (
         db.query(Patient)
         .filter(
-            (Patient.emergency_identifier == q) | (Patient.patient_name.ilike(f"%{q}%"))
+            or_(
+                Patient.emergency_identifier == q_clean,
+                Patient.phone_number == q_clean,
+                Patient.patient_name.ilike(f"%{q_clean}%"),
+            )
         )
         .limit(20)
         .all()
     )
 
-    _log_access(db, user.user_id, f"Searched patients: {q}")
+    _log_access(db, user.user_id, f"Searched patients: {q_clean}")
 
     return [
         PatientSearchResult(
             patient_id=p.patient_id,
             emergency_identifier=p.emergency_identifier,
+            phone_number=p.phone_number,
             patient_name=p.patient_name,
             blood_type=p.blood_type_code,
         )

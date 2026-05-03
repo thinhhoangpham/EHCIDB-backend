@@ -105,6 +105,7 @@ CREATE TABLE admission (
 
 
 DROP TABLE IF EXISTS doctor_patient_assignment;
+
 CREATE TABLE doctor_patient_assignment (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
@@ -116,3 +117,20 @@ CREATE TABLE doctor_patient_assignment (
   FOREIGN KEY (doctor_id) REFERENCES doctor(doctor_id),
   FOREIGN KEY (patient_id) REFERENCES patient(patient_id)
 );
+
+-- DROP TABLE IF EXISTS doctor_patient_assignment;
+-- CREATE TABLE doctor_patient_assignment (
+--   id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+--   doctor_id BIGINT NOT NULL,
+--   patient_id BIGINT NOT NULL,
+
+--   -- date_of_admission DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+--   assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+--   FOREIGN KEY (doctor_id) REFERENCES doctor(doctor_id),
+--   FOREIGN KEY (patient_id) REFERENCES patient(patient_id)
+-- );
+
+-- ALTER TABLE doctor_patient_assignment
+-- CHANGE COLUMN date_of_admission assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
